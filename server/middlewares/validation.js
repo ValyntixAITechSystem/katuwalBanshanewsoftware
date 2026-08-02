@@ -1,0 +1,150 @@
+// middlewares/validation.js
+import { body, param, query, validationResult } from 'express-validator';
+
+export const validate = (validations) => {
+  return async (req, res, next) => {
+    await Promise.all(validations.map(validation => validation.run(req)));
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      console.log("Validation Errors:");
+      console.log(errors.array());
+
+      return res.status(400).json({
+        errors: errors.array().map(err => ({
+          field: err.path,
+          message: err.msg,
+        })),
+      });
+    }
+
+    // Only proceed to next if no errors
+    next();
+  };
+};
+
+// Rest of your validation functions remain the same...
+export const memberValidation = [
+  body('name')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Name must be between 2 and 100 characters'),
+  body('gender')
+    .isIn(['male', 'female', 'other'])
+    .withMessage('Invalid gender'),
+  body('relation')
+    .optional()
+    .isIn(['member', 'spouse', 'child', 'parent', 'sibling', 'grandparent', 'grandchild', 'other'])
+    .withMessage('Invalid relation'),
+  body('phone')
+    .optional()
+    .matches(/^[0-9]{10,15}$/)
+    .withMessage('Invalid phone number'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Invalid email address'),
+  body('dob')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format'),
+  body('familyNumber')
+    .optional()
+    .trim(),
+  body('generation')
+    .optional()
+    .isInt({ min: 0 })
+    .withMessage('Generation must be a positive number'),
+];
+
+export const relationshipValidation = [
+  body('memberId')
+    .isMongoId()
+    .withMessage('Invalid member ID'),
+  body('relatedMemberId')
+    .isMongoId()
+    .withMessage('Invalid related member ID')
+    .custom((value, { req }) => {
+      if (value === req.body.memberId) {
+        throw new Error('Cannot relate a member to themselves');
+      }
+      return true;
+    }),
+  body('relationshipType')
+    .isIn(['spouse', 'child', 'parent', 'sibling', 'grandparent', 'grandchild', 'aunt_uncle', 'cousin', 'other'])
+    .withMessage('Invalid relationship type'),
+];
+
+export const donationValidation = [
+  body('donor')
+    .isMongoId()
+    .withMessage('Invalid donor ID'),
+  body('amount')
+    .isFloat({ min: 0 })
+    .withMessage('Amount must be a positive number'),
+  body('purpose')
+    .optional()
+    .isIn(['general', 'education', 'medical', 'emergency', 'event', 'other'])
+    .withMessage('Invalid purpose'),
+  body('date')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format'),
+];
+
+export const familyValidation = [
+  body('familyName')
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Family name must be between 2 and 100 characters'),
+  body('familyNumber')
+    .trim()
+    .notEmpty()
+    .withMessage('Family number is required'),
+];
+
+export const documentValidation = [
+  body('memberId')
+    .isMongoId()
+    .withMessage('Invalid member ID'),
+  body('documentType')
+    .isIn(['citizenship', 'birth_certificate', 'marriage_certificate', 'death_certificate', 'migration_certificate', 'educational_certificate', 'passport', 'photo_album', 'other'])
+    .withMessage('Invalid document type'),
+  body('title')
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Title must be between 1 and 200 characters'),
+];
+
+export const chatValidation = [
+  body('room')
+    .notEmpty()
+    .withMessage('Room is required'),
+  body('message')
+    .trim()
+    .isLength({ min: 1, max: 1000 })
+    .withMessage('Message must be between 1 and 1000 characters'),
+];
+
+export const notificationValidation = [
+  body('type')
+    .isIn(['member_added', 'member_updated', 'member_deleted', 'donation_added', 'document_uploaded', 'report_generated', 'family_added', 'family_updated', 'general'])
+    .withMessage('Invalid notification type'),
+  body('title')
+    .trim()
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Title must be between 1 and 200 characters'),
+  body('message')
+    .trim()
+    .isLength({ min: 1, max: 500 })
+    .withMessage('Message must be between 1 and 500 characters'),
+];
+
+export const draftValidation = [
+  body('module')
+    .isIn(['member', 'family', 'donation'])
+    .withMessage('Invalid module'),
+  body('data')
+    .isObject()
+    .withMessage('Data must be an object'),
+];
