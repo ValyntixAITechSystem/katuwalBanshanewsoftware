@@ -1,3 +1,4 @@
+// src/models/Family.js
 import mongoose from 'mongoose';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -66,5 +67,26 @@ const familySchema = new mongoose.Schema({
 familySchema.index({ familyName: 'text' });
 familySchema.index({ familyNumber: 1 });
 familySchema.index({ clan: 1 });
+
+// Virtual populate: Family -> Members
+familySchema.virtual('members', {
+  ref: 'Member',
+  localField: '_id',
+  foreignField: 'family',
+});
+
+familySchema.set('toJSON', { virtuals: true });
+familySchema.set('toObject', { virtuals: true });
+
+familySchema.pre('save', async function (next) {
+  if (this.isNew) {
+    if (!this.familyNumber) {
+      const lastFamily = await this.constructor.findOne().sort({ familyNumber: -1 });
+      const lastNumber = lastFamily ? parseInt(lastFamily.familyNumber) : 0;
+      this.familyNumber = String(lastNumber + 1).padStart(3, '0');
+    }
+  }
+  next();
+});
 
 export default mongoose.model('Family', familySchema);

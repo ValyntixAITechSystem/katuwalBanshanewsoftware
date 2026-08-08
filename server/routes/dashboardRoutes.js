@@ -1,3 +1,4 @@
+// src/routes/dashboardRoutes.js
 import express from 'express';
 import {
   getDashboardStats,

@@ -1,386 +1,627 @@
-// // src/pages/Reports.jsx
+// // src/pages/Reports.jsx - Updated version with modal
 // import { useState } from 'react';
-// import {
-//   generateGenealogyReport,
-//   generateFamilyReport,
-//   generateGenerationReport,
-//   generateDonationReport,
-//   generateDemographicReport,
-// } from '../api/reports';
+// import { useQuery } from '@tanstack/react-query';
+// import { getFamilies, getFamilyById } from '../api/families';
+// import { getMembers } from '../api/members';
+// import { generateFamilyReport } from '../api/reports';
 // import Button from '../components/Button';
+// import Modal from '../components/Modal';
 // import toast from 'react-hot-toast';
+// import { motion } from 'framer-motion';
+// import { 
+//   FaUsers, FaHome, FaFileExcel, FaTimes, FaChartBar, 
+//   FaUser, FaUserFriends, FaHeart, FaDownload 
+// } from 'react-icons/fa';
+// import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 // const Reports = () => {
-//   const [loading, setLoading] = useState({});
+//   const [selectedFamily, setSelectedFamily] = useState(null);
+//   const [isModalOpen, setIsModalOpen] = useState(false);
+//   const [searchTerm, setSearchTerm] = useState('');
+//   const [exporting, setExporting] = useState(false);
 
-//   const downloadReport = async (generator, filename, params = {}) => {
-//     const key = filename;
-//     setLoading((prev) => ({ ...prev, [key]: true }));
+//   // Fetch families
+//   const { data: familiesData, isLoading: familiesLoading } = useQuery({
+//     queryKey: ['families-report'],
+//     queryFn: () => getFamilies({ limit: 1000 }),
+//   });
 
+//   // Fetch family details when selected
+//   const { data: familyDetails, isLoading: familyLoading } = useQuery({
+//     queryKey: ['family', selectedFamily?._id],
+//     queryFn: () => getFamilyById(selectedFamily?._id),
+//     enabled: !!selectedFamily,
+//   });
+
+//   // Fetch all members for statistics
+//   const { data: membersData } = useQuery({
+//     queryKey: ['members-stats'],
+//     queryFn: () => getMembers({ limit: 10000 }),
+//   });
+
+//   const filteredFamilies = familiesData?.data?.filter(family => 
+//     family.familyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//     family.familyNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+//     family.clan?.toLowerCase().includes(searchTerm.toLowerCase())
+//   ) || [];
+
+//   const getFamilyMemberCount = (familyId) => {
+//     if (!membersData?.data) return 0;
+//     return membersData.data.filter(m => m.family?._id === familyId || m.family === familyId).length;
+//   };
+
+//   const handleFamilyClick = (family) => {
+//     setSelectedFamily(family);
+//     setIsModalOpen(true);
+//   };
+
+//   const handleExportExcel = async () => {
+//     if (!selectedFamily) return;
+    
+//     setExporting(true);
 //     try {
-//       const blob = await generator(params);
+//       const blob = await generateFamilyReport({ 
+//         familyId: selectedFamily._id,
+//         format: 'excel'
+//       });
+      
 //       const url = window.URL.createObjectURL(blob);
 //       const link = document.createElement('a');
 //       link.href = url;
-//       link.download = `${filename}.${params.format === 'csv' ? 'csv' : 'xlsx'}`;
+//       link.download = `family-report-${selectedFamily.familyName}-${Date.now()}.xlsx`;
 //       document.body.appendChild(link);
 //       link.click();
 //       document.body.removeChild(link);
 //       window.URL.revokeObjectURL(url);
-//       toast.success('Report downloaded successfully');
+      
+//       toast.success('Report exported successfully');
 //     } catch (error) {
-//       toast.error('Failed to generate report');
+//       toast.error('Failed to export report');
 //     } finally {
-//       setLoading((prev) => ({ ...prev, [key]: false }));
+//       setExporting(false);
 //     }
 //   };
 
-//   const reportTypes = [
-//     {
-//       id: 'genealogy',
-//       title: 'Genealogy Report',
-//       description: 'Complete family genealogy with all members',
-//       generator: generateGenealogyReport,
-//     },
-//     {
-//       id: 'family',
-//       title: 'Family Report',
-//       description: 'Detailed report of all families',
-//       generator: generateFamilyReport,
-//     },
-//     {
-//       id: 'generation',
-//       title: 'Generation Report',
-//       description: 'Statistics by generation',
-//       generator: generateGenerationReport,
-//     },
-//     {
-//       id: 'donation',
-//       title: 'Donation Report',
-//       description: 'All donations with summary',
-//       generator: generateDonationReport,
-//     },
-//     {
-//       id: 'demographic',
-//       title: 'Demographic Report',
-//       description: 'Demographic statistics and analysis',
-//       generator: generateDemographicReport,
-//     },
-//   ];
+//   // Family Card Component
+//   const FamilyCard = ({ family }) => {
+//     const memberCount = getFamilyMemberCount(family._id);
+    
+//     return (
+//       <motion.div
+//         whileHover={{ y: -4 }}
+//         className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer"
+//         onClick={() => handleFamilyClick(family)}
+//       >
+//         <div className="flex items-start gap-4">
+//           <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0">
+//             {family.familyPhoto ? (
+//               <img 
+//                 src={family.familyPhoto} 
+//                 alt={family.familyName}
+//                 className="w-full h-full object-cover rounded-xl"
+//               />
+//             ) : (
+//               <FaHome className="text-green-600 text-2xl" />
+//             )}
+//           </div>
+//           <div className="flex-1 min-w-0">
+//             <h3 className="font-semibold text-gray-800 truncate">
+//               {family.familyName || 'Unnamed Family'}
+//             </h3>
+//             <p className="text-sm text-gray-500">
+//               House No. {family.familyNumber || 'N/A'}
+//             </p>
+//             <div className="flex items-center gap-3 mt-1">
+//               <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+//                 {memberCount} Members
+//               </span>
+//               {family.clan && (
+//                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+//                   {family.clan}
+//                 </span>
+//               )}
+//             </div>
+//           </div>
+//         </div>
+//       </motion.div>
+//     );
+//   };
+
+//   // Report Modal
+//   const ReportModal = () => {
+//     if (!selectedFamily || !familyDetails) return null;
+
+//     const members = familyDetails.members || [];
+//     const maleCount = members.filter(m => m.gender === 'male').length;
+//     const femaleCount = members.filter(m => m.gender === 'female').length;
+//     const livingCount = members.filter(m => m.isAlive !== false).length;
+
+//     return (
+//       <Modal
+//         isOpen={isModalOpen}
+//         onClose={() => {
+//           setIsModalOpen(false);
+//           setSelectedFamily(null);
+//         }}
+//         title="Family Report"
+//         size="xl"
+//       >
+//         <div className="space-y-6 max-h-[80vh] overflow-y-auto px-1">
+//           {/* Family Information */}
+//           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+//             <div className="flex items-center gap-4">
+//               <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow">
+//                 {selectedFamily.familyPhoto ? (
+//                   <img 
+//                     src={selectedFamily.familyPhoto} 
+//                     alt={selectedFamily.familyName}
+//                     className="w-full h-full object-cover"
+//                   />
+//                 ) : (
+//                   <div className="w-full h-full bg-green-200 flex items-center justify-center">
+//                     <FaHome className="text-green-600 text-2xl" />
+//                   </div>
+//                 )}
+//               </div>
+//               <div>
+//                 <h3 className="text-xl font-bold text-gray-800">
+//                   {selectedFamily.familyName}
+//                 </h3>
+//                 <p className="text-sm text-gray-600">
+//                   House No. {selectedFamily.familyNumber}
+//                 </p>
+//                 {selectedFamily.clan && (
+//                   <p className="text-sm text-gray-500">Clan: {selectedFamily.clan}</p>
+//                 )}
+//               </div>
+//             </div>
+//           </div>
+
+//           {/* Statistics */}
+//           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+//             <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+//               <FaUsers className="text-blue-500 text-xl mx-auto mb-1" />
+//               <p className="text-2xl font-bold text-gray-800">{members.length}</p>
+//               <p className="text-xs text-gray-500">Total Members</p>
+//             </div>
+//             <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+//               <FaUser className="text-blue-500 text-xl mx-auto mb-1" />
+//               <p className="text-2xl font-bold text-gray-800">{maleCount}</p>
+//               <p className="text-xs text-gray-500">Male</p>
+//             </div>
+//             <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+//               <FaUserFriends className="text-pink-500 text-xl mx-auto mb-1" />
+//               <p className="text-2xl font-bold text-gray-800">{femaleCount}</p>
+//               <p className="text-xs text-gray-500">Female</p>
+//             </div>
+//             <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+//               <FaHeart className="text-red-500 text-xl mx-auto mb-1" />
+//               <p className="text-2xl font-bold text-gray-800">{livingCount}</p>
+//               <p className="text-xs text-gray-500">Living</p>
+//             </div>
+//           </div>
+
+//           {/* Member List */}
+//           <div>
+//             <h4 className="font-semibold text-gray-700 mb-3">Member List</h4>
+//             <div className="border border-gray-200 rounded-xl overflow-hidden">
+//               <table className="w-full text-sm">
+//                 <thead className="bg-gray-50">
+//                   <tr>
+//                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+//                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Gender</th>
+//                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Generation</th>
+//                     <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+//                   </tr>
+//                 </thead>
+//                 <tbody className="divide-y divide-gray-100">
+//                   {members.map((member, index) => (
+//                     <tr key={member._id || index} className="hover:bg-gray-50">
+//                       <td className="px-4 py-2 font-medium text-gray-700">{member.name}</td>
+//                       <td className="px-4 py-2 text-gray-600 capitalize">{member.gender}</td>
+//                       <td className="px-4 py-2 text-gray-600">{member.generation || 'N/A'}</td>
+//                       <td className="px-4 py-2">
+//                         <span className={`px-2 py-0.5 rounded-full text-xs ${
+//                           member.isAlive !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+//                         }`}>
+//                           {member.isAlive !== false ? 'Living' : 'Deceased'}
+//                         </span>
+//                       </td>
+//                     </tr>
+//                   ))}
+//                 </tbody>
+//               </table>
+//             </div>
+//           </div>
+
+//           {/* Buttons */}
+//           <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+//             <Button
+//               variant="primary"
+//               onClick={handleExportExcel}
+//               disabled={exporting}
+//               className="flex items-center"
+//             >
+//               <FaFileExcel className="mr-2" />
+//               {exporting ? 'Exporting...' : 'Export Excel'}
+//             </Button>
+//             <Button
+//               variant="outline"
+//               onClick={() => {
+//                 setIsModalOpen(false);
+//                 setSelectedFamily(null);
+//               }}
+//               className="flex items-center"
+//             >
+//               <FaTimes className="mr-2" />
+//               Close
+//             </Button>
+//           </div>
+//         </div>
+//       </Modal>
+//     );
+//   };
+
+//   if (familiesLoading) {
+//     return (
+//       <div className="flex items-center justify-center h-64">
+//         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+//       </div>
+//     );
+//   }
 
 //   return (
 //     <div className="space-y-6">
-//       <div>
-//         <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-//         <p className="text-gray-600">Generate and download various reports</p>
+//       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+//         <div>
+//           <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+//           <p className="text-gray-600">View and export family reports</p>
+//         </div>
 //       </div>
 
-//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//         {reportTypes.map((report) => (
-//           <div
-//             key={report.id}
-//             className="bg-white rounded-lg shadow-sm border border-gray-200 p-6"
-//           >
-//             <h3 className="text-lg font-semibold text-gray-900">
-//               {report.title}
-//             </h3>
-//             <p className="text-sm text-gray-600 mt-2">{report.description}</p>
-//             <div className="mt-4 flex space-x-2">
-//               <Button
-//                 variant="primary"
-//                 size="sm"
-//                 onClick={() =>
-//                   downloadReport(report.generator, report.id, { format: 'excel' })
-//                 }
-//                 disabled={loading[report.id]}
-//               >
-//                 {loading[report.id] ? 'Generating...' : 'Excel'}
-//               </Button>
-//               <Button
-//                 variant="outline"
-//                 size="sm"
-//                 onClick={() =>
-//                   downloadReport(report.generator, report.id, { format: 'csv' })
-//                 }
-//                 disabled={loading[report.id]}
-//               >
-//                 {loading[report.id] ? 'Generating...' : 'CSV'}
-//               </Button>
-//             </div>
-//           </div>
-//         ))}
+//       {/* Search */}
+//       <div className="relative max-w-md">
+//         <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+//         <input
+//           type="text"
+//           placeholder="Search families..."
+//           value={searchTerm}
+//           onChange={(e) => setSearchTerm(e.target.value)}
+//           className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+//         />
 //       </div>
+
+//       {/* Family Grid */}
+//       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+//         {filteredFamilies.length === 0 ? (
+//           <div className="col-span-full text-center py-12 bg-white rounded-xl border border-gray-200">
+//             <FaHome className="text-4xl text-gray-300 mx-auto mb-3" />
+//             <p className="text-gray-500">No families found</p>
+//           </div>
+//         ) : (
+//           filteredFamilies.map((family) => (
+//             <FamilyCard key={family._id} family={family} />
+//           ))
+//         )}
+//       </div>
+
+//       {/* Report Modal */}
+//       <ReportModal />
 //     </div>
 //   );
 // };
 
 // export default Reports;
-
-
-// src/pages/Reports.jsx
 import { useState } from 'react';
-import {
-  generateGenealogyReport,
-  generateFamilyReport,
-  generateGenerationReport,
-  generateDonationReport,
-  generateDemographicReport,
-} from '../api/reports';
-import { getMembers } from '../api/members';
-import { getFamilies } from '../api/families';
 import { useQuery } from '@tanstack/react-query';
+import { getFamilies, getFamilyById } from '../api/families';
+import { getMembers } from '../api/members';
+import { generateFamilyReport } from '../api/reports';
 import Button from '../components/Button';
-import Select from 'react-select';
+import Modal from '../components/Modal';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
+import { 
+  FaUsers, FaHome, FaFileExcel, FaTimes, FaChartBar, 
+  FaUser, FaUserFriends, FaHeart, FaDownload 
+} from 'react-icons/fa';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 
 const Reports = () => {
-  const [loading, setLoading] = useState({});
-  const [filters, setFilters] = useState({
-    family: '',
-    generation: '',
-    gender: '',
-    district: '',
-    province: '',
-    status: '',
-    verificationStatus: '',
-    format: 'excel',
-  });
-  const [showFilters, setShowFilters] = useState(false);
+  const [selectedFamily, setSelectedFamily] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [exporting, setExporting] = useState(false);
 
-  const { data: membersData } = useQuery({
-    queryKey: ['members-dropdown'],
-    queryFn: () => getMembers({ limit: 1000 }),
-  });
-
-  const { data: familiesData } = useQuery({
-    queryKey: ['families-dropdown'],
+  // Fetch families
+  const { data: familiesData, isLoading: familiesLoading } = useQuery({
+    queryKey: ['families-report'],
     queryFn: () => getFamilies({ limit: 1000 }),
   });
 
-  const memberOptions = (membersData?.data || []).map(m => ({
-    value: m._id,
-    label: `${m.name} (${m.familyNumber || 'No Family'})`,
-  }));
+  // Fetch family details when selected
+  const { data: familyDetails, isLoading: familyLoading } = useQuery({
+    queryKey: ['family', selectedFamily?._id],
+    queryFn: () => getFamilyById(selectedFamily?._id),
+    enabled: !!selectedFamily,
+  });
 
-  const familyOptions = (familiesData?.data || []).map(f => ({
-    value: f._id,
-    label: `${f.familyName} (${f.familyNumber})`,
-  }));
+  // Fetch all members for statistics
+  const { data: membersData } = useQuery({
+    queryKey: ['members-stats'],
+    queryFn: () => getMembers({ limit: 10000 }),
+  });
 
-  const downloadReport = async (generator, filename, params = {}) => {
-    const key = filename;
-    setLoading((prev) => ({ ...prev, [key]: true }));
+  const filteredFamilies = familiesData?.data?.filter(family => 
+    family.familyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    family.familyNumber?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    family.clan?.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
+  const getFamilyMemberCount = (familyId) => {
+    if (!membersData?.data) return 0;
+    return membersData.data.filter(m => m.family?._id === familyId || m.family === familyId).length;
+  };
+
+  const handleFamilyClick = (family) => {
+    setSelectedFamily(family);
+    setIsModalOpen(true);
+  };
+
+  const handleExportExcel = async () => {
+    if (!selectedFamily) return;
+    
+    setExporting(true);
     try {
-      const blob = await generator({ 
-        ...params,
-        ...filters,
-        format: filters.format 
+      const blob = await generateFamilyReport({ 
+        familyId: selectedFamily._id,
+        format: 'excel'
       });
+      
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `${filename}.${filters.format === 'csv' ? 'csv' : 'xlsx'}`;
+      link.download = `family-report-${selectedFamily.familyName}-${Date.now()}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      toast.success('Report downloaded successfully');
+      
+      toast.success('Report exported successfully');
     } catch (error) {
-      toast.error('Failed to generate report');
+      toast.error('Failed to export report');
     } finally {
-      setLoading((prev) => ({ ...prev, [key]: false }));
+      setExporting(false);
     }
   };
 
-  const reportTypes = [
-    {
-      id: 'genealogy',
-      title: 'Genealogy Report',
-      description: 'Complete family genealogy with all members',
-      generator: generateGenealogyReport,
-      supportsFilters: true,
-    },
-    {
-      id: 'family',
-      title: 'Family Report',
-      description: 'Detailed report of all families',
-      generator: generateFamilyReport,
-      supportsFilters: true,
-    },
-    {
-      id: 'generation',
-      title: 'Generation Report',
-      description: 'Statistics by generation',
-      generator: generateGenerationReport,
-      supportsFilters: false,
-    },
-    {
-      id: 'donation',
-      title: 'Donation Report',
-      description: 'All donations with summary',
-      generator: generateDonationReport,
-      supportsFilters: false,
-    },
-    {
-      id: 'demographic',
-      title: 'Demographic Report',
-      description: 'Demographic statistics and analysis',
-      generator: generateDemographicReport,
-      supportsFilters: true,
-    },
-  ];
+  // Family Card Component
+  const FamilyCard = ({ family }) => {
+    const memberCount = getFamilyMemberCount(family._id);
+    
+    return (
+      <motion.div
+        whileHover={{ y: -4 }}
+        className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer"
+        onClick={() => handleFamilyClick(family)}
+      >
+        <div className="flex items-start gap-4">
+          <div className="w-14 h-14 rounded-xl bg-gradient-to-r from-green-100 to-emerald-100 flex items-center justify-center flex-shrink-0">
+            {family.familyPhoto ? (
+              <img 
+                src={family.familyPhoto} 
+                alt={family.familyName}
+                className="w-full h-full object-cover rounded-xl"
+              />
+            ) : (
+              <FaHome className="text-green-600 text-2xl" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-semibold text-gray-800 truncate">
+              {family.familyName || 'Unnamed Family'}
+            </h3>
+            <p className="text-sm text-gray-500">
+              House No. {family.familyNumber || 'N/A'}
+            </p>
+            <div className="flex items-center gap-3 mt-1">
+              <span className="text-xs bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
+                {memberCount} Members
+              </span>
+              {family.clan && (
+                <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
+                  {family.clan}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    );
+  };
+
+  // Report Modal
+  const ReportModal = () => {
+    if (!selectedFamily || !familyDetails) return null;
+
+    const members = familyDetails.members || [];
+    const maleCount = members.filter(m => m.gender === 'male').length;
+    const femaleCount = members.filter(m => m.gender === 'female').length;
+    const livingCount = members.filter(m => m.isAlive !== false).length;
+
+    return (
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => {
+          setIsModalOpen(false);
+          setSelectedFamily(null);
+        }}
+        title="Family Report"
+        size="xl"
+      >
+        <div className="space-y-6 max-h-[80vh] overflow-y-auto px-1">
+          {/* Family Information */}
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-200">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-white shadow">
+                {selectedFamily.familyPhoto ? (
+                  <img 
+                    src={selectedFamily.familyPhoto} 
+                    alt={selectedFamily.familyName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-green-200 flex items-center justify-center">
+                    <FaHome className="text-green-600 text-2xl" />
+                  </div>
+                )}
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">
+                  {selectedFamily.familyName}
+                </h3>
+                <p className="text-sm text-gray-600">
+                  House No. {selectedFamily.familyNumber}
+                </p>
+                {selectedFamily.clan && (
+                  <p className="text-sm text-gray-500">Clan: {selectedFamily.clan}</p>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Statistics */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <FaUsers className="text-blue-500 text-xl mx-auto mb-1" />
+              <p className="text-2xl font-bold text-gray-800">{members.length}</p>
+              <p className="text-xs text-gray-500">Total Members</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <FaUser className="text-blue-500 text-xl mx-auto mb-1" />
+              <p className="text-2xl font-bold text-gray-800">{maleCount}</p>
+              <p className="text-xs text-gray-500">Male</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <FaUserFriends className="text-pink-500 text-xl mx-auto mb-1" />
+              <p className="text-2xl font-bold text-gray-800">{femaleCount}</p>
+              <p className="text-xs text-gray-500">Female</p>
+            </div>
+            <div className="bg-white rounded-xl border border-gray-200 p-4 text-center">
+              <FaHeart className="text-red-500 text-xl mx-auto mb-1" />
+              <p className="text-2xl font-bold text-gray-800">{livingCount}</p>
+              <p className="text-xs text-gray-500">Living</p>
+            </div>
+          </div>
+
+          {/* Member List */}
+          <div>
+            <h4 className="font-semibold text-gray-700 mb-3">Member List</h4>
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Member ID</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Name</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Gender</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Generation</th>
+                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {members.map((member, index) => (
+                    <tr key={member._id || index} className="hover:bg-gray-50">
+                      <td className="px-4 py-2 text-xs font-mono text-gray-500">{member.memberNumber || 'N/A'}</td>
+                      <td className="px-4 py-2 font-medium text-gray-700">{member.name}</td>
+                      <td className="px-4 py-2 text-gray-600 capitalize">{member.gender}</td>
+                      <td className="px-4 py-2 text-gray-600">{member.generation || 'N/A'}</td>
+                      <td className="px-4 py-2">
+                        <span className={`px-2 py-0.5 rounded-full text-xs ${
+                          member.isAlive !== false ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'
+                        }`}>
+                          {member.isAlive !== false ? 'Living' : 'Deceased'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Buttons - Only Excel */}
+          <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-200">
+            <Button
+              variant="primary"
+              onClick={handleExportExcel}
+              disabled={exporting}
+              className="flex items-center"
+            >
+              <FaFileExcel className="mr-2" />
+              {exporting ? 'Exporting...' : 'Export Excel'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsModalOpen(false);
+                setSelectedFamily(null);
+              }}
+              className="flex items-center"
+            >
+              <FaTimes className="mr-2" />
+              Close
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    );
+  };
+
+  if (familiesLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
-          <p className="text-gray-600">Generate and download various reports</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <select
-            value={filters.format}
-            onChange={(e) => setFilters({ ...filters, format: e.target.value })}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          >
-            <option value="excel">Excel (.xlsx)</option>
-            <option value="csv">CSV (.csv)</option>
-          </select>
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-          >
-            {showFilters ? 'Hide Filters' : 'Show Filters'}
-          </Button>
+          <p className="text-gray-600">View and export family reports</p>
         </div>
       </div>
 
-      {/* Filters */}
-      {showFilters && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Family</label>
-              <Select
-                options={familyOptions}
-                value={familyOptions.find(opt => opt.value === filters.family)}
-                onChange={(opt) => setFilters({ ...filters, family: opt?.value || '' })}
-                placeholder="Select Family"
-                isClearable
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Generation</label>
-              <select
-                value={filters.generation}
-                onChange={(e) => setFilters({ ...filters, generation: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All Generations</option>
-                {[1,2,3,4,5,6,7,8,9,10].map(gen => (
-                  <option key={gen} value={gen}>Generation {gen}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
-              <select
-                value={filters.gender}
-                onChange={(e) => setFilters({ ...filters, gender: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All Genders</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">District</label>
-              <input
-                type="text"
-                value={filters.district}
-                onChange={(e) => setFilters({ ...filters, district: e.target.value })}
-                placeholder="Filter by district"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Province</label>
-              <input
-                type="text"
-                value={filters.province}
-                onChange={(e) => setFilters({ ...filters, province: e.target.value })}
-                placeholder="Filter by province"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters({ ...filters, status: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All Status</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="deceased">Deceased</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Verification Status</label>
-              <select
-                value={filters.verificationStatus}
-                onChange={(e) => setFilters({ ...filters, verificationStatus: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              >
-                <option value="">All</option>
-                <option value="verified">Verified</option>
-                <option value="pending">Pending</option>
-                <option value="rejected">Rejected</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Report Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {reportTypes.map((report) => (
-          <div
-            key={report.id}
-            className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
-          >
-            <h3 className="text-lg font-semibold text-gray-900">
-              {report.title}
-            </h3>
-            <p className="text-sm text-gray-600 mt-2">{report.description}</p>
-            {report.supportsFilters && showFilters && (
-              <p className="text-xs text-gray-500 mt-1">Filters will be applied</p>
-            )}
-            <div className="mt-4 flex space-x-2">
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() =>
-                  downloadReport(report.generator, report.id)
-                }
-                disabled={loading[report.id]}
-              >
-                {loading[report.id] ? 'Generating...' : `Download ${filters.format.toUpperCase()}`}
-              </Button>
-            </div>
-          </div>
-        ))}
+      {/* Search */}
+      <div className="relative max-w-md">
+        <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <input
+          type="text"
+          placeholder="Search families..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+        />
       </div>
+
+      {/* Family Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {filteredFamilies.length === 0 ? (
+          <div className="col-span-full text-center py-12 bg-white rounded-xl border border-gray-200">
+            <FaHome className="text-4xl text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-500">No families found</p>
+          </div>
+        ) : (
+          filteredFamilies.map((family) => (
+            <FamilyCard key={family._id} family={family} />
+          ))
+        )}
+      </div>
+
+      {/* Report Modal */}
+      <ReportModal />
     </div>
   );
 };

@@ -75,9 +75,9 @@ import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
 import Families from './pages/Families';
 import Donations from './pages/Donations';
-import FamilyTree from './pages/FamilyTree';
+import FamilyTree from './pages/FamilyTreePage';
 import DataEntry from './pages/DataEntry';
-import MemberProfile from './pages/MemberProfile';
+// import MemberProfile from './pages/MemberProfile';
 import Documents from './pages/Documents';
 import Chat from './pages/Chat';
 import Notifications from './pages/Notifications';
@@ -104,7 +104,7 @@ function App() {
             <Routes>
               <Route path="/" element={<Dashboard />} />
               <Route path="/members" element={<Members />} />
-              <Route path="/members/:id" element={<MemberProfile />} />
+              {/* <Route path="/members/:id" element={<MemberProfile />} /> */}
               <Route path="/families" element={<Families />} />
               <Route path="/donations" element={<Donations />} />
               <Route path="/family-tree" element={<FamilyTree />} />

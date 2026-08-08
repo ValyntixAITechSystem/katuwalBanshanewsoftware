@@ -57,6 +57,97 @@ export const memberValidation = [
     .withMessage('Generation must be a positive number'),
 ];
 
+
+
+// Donation Validation - FIXED
+export const donationValidation = [
+  // Donor Information
+  body('donorType')
+    .isIn(['member', 'family', 'external'])
+    .withMessage('Invalid donor type'),
+  
+  body('donorId')
+    .optional({ nullable: true, checkFalsy: true })
+    .custom((value) => {
+      // Skip validation if value is null, undefined, or empty string
+      if (!value) return true;
+      // Validate MongoDB ObjectId
+      if (!mongoose.Types.ObjectId.isValid(value)) {
+        throw new Error('Invalid donor ID format');
+      }
+      return true;
+    }),
+  
+  body('donorName')
+    .if(body('donorType').equals('external'))
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Donor name must be between 2 and 100 characters'),
+  
+  body('donorName')
+    .if(body('donorType').not().equals('external'))
+    .optional()
+    .trim()
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Donor name must be between 2 and 100 characters'),
+  
+  body('donorPhone')
+    .optional({ nullable: true, checkFalsy: true })
+    .matches(/^[0-9]{10,15}$/)
+    .withMessage('Invalid phone number'),
+  
+  body('donorEmail')
+    .optional({ nullable: true, checkFalsy: true })
+    .isEmail()
+    .withMessage('Invalid email address'),
+  
+  // Donation Details
+  body('amount')
+    .isFloat({ min: 0.01 })
+    .withMessage('Amount must be greater than 0'),
+  
+  body('paymentMethod')
+    .isIn(['qr', 'cash', 'bank_transfer', 'cheque'])
+    .withMessage('Invalid payment method'),
+  
+  body('category')
+    .optional()
+    .isIn(['general', 'temple', 'education', 'emergency', 'event', 'other'])
+    .withMessage('Invalid category'),
+  
+  body('donationDate')
+    .optional()
+    .isISO8601()
+    .withMessage('Invalid date format'),
+  
+  body('purpose')
+    .optional()
+    .trim()
+    .isLength({ max: 200 })
+    .withMessage('Purpose must be less than 200 characters'),
+  
+  body('remarks')
+    .optional()
+    .trim()
+    .isLength({ max: 500 })
+    .withMessage('Remarks must be less than 500 characters'),
+  
+  body('isAnonymous')
+    .optional()
+    .isBoolean()
+    .withMessage('isAnonymous must be a boolean'),
+  
+  body('qrPaymentCompleted')
+    .optional()
+    .isBoolean()
+    .withMessage('qrPaymentCompleted must be a boolean'),
+  
+  body('paymentStatus')
+    .optional()
+    .isIn(['pending', 'completed', 'failed'])
+    .withMessage('Invalid payment status'),
+]; 
+
 export const relationshipValidation = [
   body('memberId')
     .isMongoId()
@@ -75,22 +166,22 @@ export const relationshipValidation = [
     .withMessage('Invalid relationship type'),
 ];
 
-export const donationValidation = [
-  body('donor')
-    .isMongoId()
-    .withMessage('Invalid donor ID'),
-  body('amount')
-    .isFloat({ min: 0 })
-    .withMessage('Amount must be a positive number'),
-  body('purpose')
-    .optional()
-    .isIn(['general', 'education', 'medical', 'emergency', 'event', 'other'])
-    .withMessage('Invalid purpose'),
-  body('date')
-    .optional()
-    .isISO8601()
-    .withMessage('Invalid date format'),
-];
+// export const donationValidation = [
+//   body('donor')
+//     .isMongoId()
+//     .withMessage('Invalid donor ID'),
+//   body('amount')
+//     .isFloat({ min: 0 })
+//     .withMessage('Amount must be a positive number'),
+//   body('purpose')
+//     .optional()
+//     .isIn(['general', 'education', 'medical', 'emergency', 'event', 'other'])
+//     .withMessage('Invalid purpose'),
+//   body('date')
+//     .optional()
+//     .isISO8601()
+//     .withMessage('Invalid date format'),
+// ];
 
 export const familyValidation = [
   body('familyName')

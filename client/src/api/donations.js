@@ -1,4 +1,3 @@
-// src/api/donations.js
 import axios from './axios';
 
 export const getDonations = async (params = {}) => {
@@ -28,5 +27,20 @@ export const deleteDonation = async (id) => {
 
 export const getDonationStats = async () => {
   const { data } = await axios.get('/donations/stats');
+  return data;
+};
+
+// Excel Export APIs
+export const exportAllDonations = async () => {
+  const { data } = await axios.get('/donations/export/all', {
+    responseType: 'blob',
+  });
+  return data;
+};
+
+export const exportDonation = async (id) => {
+  const { data } = await axios.get(`/donations/export/${id}`, {
+    responseType: 'blob',
+  });
   return data;
 };

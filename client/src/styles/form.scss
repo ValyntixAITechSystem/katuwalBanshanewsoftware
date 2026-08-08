@@ -1,0 +1,190 @@
+// src/styles/form.scss
+// Floating Input Styles
+.floating-input {
+  &__container {
+    position: relative;
+    width: 100%;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 12px 16px;
+    border: 2px solid #e5e7eb;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    background: white;
+
+    &:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      outline: none;
+    }
+
+    &.has-value,
+    &:focus {
+      padding-top: 20px;
+      padding-bottom: 4px;
+    }
+  }
+
+  &__label {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: all 0.2s ease;
+    color: #6b7280;
+    pointer-events: none;
+
+    &.has-value,
+    &.focused {
+      top: 6px;
+      font-size: 10px;
+      color: #2563eb;
+      transform: none;
+    }
+  }
+
+  &__icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #9ca3af;
+  }
+}
+
+// React Select Customization
+.react-select {
+  &__control {
+    border-radius: 8px !important;
+    border-color: #e5e7eb !important;
+    min-height: 48px !important;
+    box-shadow: none !important;
+
+    &:hover {
+      border-color: #d1d5db !important;
+    }
+
+    &--is-focused {
+      border-color: #2563eb !important;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1) !important;
+    }
+  }
+
+  &__option {
+    padding: 8px 12px !important;
+
+    &--is-focused {
+      background-color: #dbeafe !important;
+    }
+
+    &--is-selected {
+      background-color: #2563eb !important;
+    }
+  }
+
+  &__menu {
+    border-radius: 8px !important;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1) !important;
+  }
+
+  &__placeholder {
+    color: #9ca3af !important;
+  }
+}
+
+// Photo Upload Styles
+.photo-upload {
+  &__container {
+    @apply relative rounded-xl overflow-hidden;
+  }
+
+  &__preview {
+    @apply w-full h-full object-cover;
+  }
+
+  &__overlay {
+    @apply absolute inset-0 bg-black/50 opacity-0 transition-opacity flex items-center justify-center gap-2;
+  }
+
+  &:hover &__overlay {
+    @apply opacity-100;
+  }
+
+  &__button {
+    @apply bg-white text-gray-800 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors;
+  }
+}
+
+// Bottom Sheet Animation
+.bottom-sheet {
+  &__overlay {
+    @apply fixed inset-0 bg-black/60 backdrop-blur-sm z-50;
+  }
+
+  &__content {
+    @apply fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl shadow-2xl z-50;
+    max-height: 90vh;
+    animation: slideUp 0.3s ease-out;
+  }
+
+  &__handle {
+    @apply w-12 h-1 bg-gray-300 rounded-full mx-auto my-3;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+// Responsive Adjustments
+@media (max-width: 640px) {
+  .form-tabs {
+    @apply overflow-x-auto;
+    -webkit-overflow-scrolling: touch;
+    
+    &::-webkit-scrollbar {
+      @apply hidden;
+    }
+  }
+
+  .form-actions {
+    @apply flex-col;
+    
+    button {
+      @apply w-full justify-center;
+    }
+  }
+}
+
+// Government Form Style
+.government-form {
+  @apply bg-white rounded-xl shadow-lg border border-gray-200;
+  
+  &__header {
+    @apply border-b border-gray-200 px-6 py-4;
+    background: linear-gradient(to right, #f8fafc, #f1f5f9);
+  }
+
+  &__title {
+    @apply text-xl font-semibold text-gray-800;
+  }
+
+  &__subtitle {
+    @apply text-sm text-gray-500;
+  }
+
+  &__body {
+    @apply p-6;
+  }
+
+  &__footer {
+    @apply border-t border-gray-200 px-6 py-4 bg-gray-50;
+  }
+}
