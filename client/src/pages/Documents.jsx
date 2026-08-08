@@ -67,7 +67,10 @@ const Documents = () => {
           <h1 className="text-2xl font-bold text-gray-900">Documents</h1>
           <p className="text-gray-600">Manage all uploaded documents</p>
         </div>
-        <Button onClick={() => setIsModalOpen(true)} className="flex items-center">
+        <Button 
+          onClick={() => setIsModalOpen(true)} 
+          className="flex items-center shadow-lg shadow-green-200"
+        >
           <PlusIcon className="h-5 w-5 mr-2" />
           Upload Document
         </Button>
@@ -122,12 +125,14 @@ const Documents = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         title="Upload Document"
+        size="md"
       >
         <DocumentUpload
           onSuccess={() => {
             setIsModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['documents'] });
           }}
+          onCancel={() => setIsModalOpen(false)}
         />
       </Modal>
     </div>

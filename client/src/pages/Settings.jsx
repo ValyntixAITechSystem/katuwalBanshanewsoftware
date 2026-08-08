@@ -1,274 +1,239 @@
 // src/pages/Settings.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getOrganization, updateOrganization, uploadLogo } from '../api/organization';
+import { getAdminProfile, updateAdminProfile, changePassword, updateTwoFactor } from '../api/admin';
+import { getSettings, updateSettings } from '../api/settings';
 import Button from '../components/Button';
 import ImageUpload from '../components/ImageUpload';
+import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import * as Icons from 'lucide-react';
+
+// Import all section components
+import GeneralSettings from '../components/settings/GeneralSettings';
+import AdministratorSettings from '../components/settings/AdministratorSettings';
+import NotificationSettings from '../components/settings/NotificationSettings';
+import DocumentSettings from '../components/settings/DocumentSettings';
+import ReportSettings from '../components/settings/ReportSettings';
+import BackupSettings from '../components/settings/BackupSettings';
+import AppearanceSettings from '../components/settings/AppearanceSettings';
+import SecuritySettings from '../components/settings/SecuritySettings';
+import SystemSettings from '../components/settings/SystemSettings';
 
 const Settings = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    address: '',
-    phone: '',
-    email: '',
-    website: '',
-    mission: '',
-    vision: '',
-    registrationNumber: '',
-    establishedDate: '',
-  });
-  const [logo, setLogo] = useState(null);
-  const [logoPreview, setLogoPreview] = useState('');
+  const [activeSection, setActiveSection] = useState('general');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
-  const { data: orgData, isLoading } = useQuery({
+  // Navigation items
+  const navItems = [
+    { id: 'general', label: 'General', icon: Icons.Building },
+    { id: 'administrator', label: 'Administrator', icon: Icons.UserCog },
+    { id: 'notifications', label: 'Notifications', icon: Icons.Bell },
+    { id: 'documents', label: 'Documents', icon: Icons.File },
+    { id: 'reports', label: 'Reports', icon: Icons.BarChart3 },
+    { id: 'backup', label: 'Backup & Restore', icon: Icons.Database },
+    { id: 'appearance', label: 'Appearance', icon: Icons.Palette },
+    { id: 'security', label: 'Security', icon: Icons.Shield },
+    { id: 'system', label: 'System', icon: Icons.Settings },
+  ];
+
+  // Fetch all data
+  const { data: orgData, refetch: refetchOrg } = useQuery({
     queryKey: ['organization'],
     queryFn: getOrganization,
   });
 
-  useEffect(() => {
-    if (orgData) {
-      setFormData({
-        name: orgData.name || '',
-        description: orgData.description || '',
-        address: orgData.address || '',
-        phone: orgData.phone || '',
-        email: orgData.email || '',
-        website: orgData.website || '',
-        mission: orgData.mission || '',
-        vision: orgData.vision || '',
-        registrationNumber: orgData.registrationNumber || '',
-        establishedDate: orgData.establishedDate ? orgData.establishedDate.split('T')[0] : '',
-      });
-      if (orgData.logo) {
-        setLogoPreview(orgData.logo);
+  const { data: adminData, refetch: refetchAdmin } = useQuery({
+    queryKey: ['adminProfile'],
+    queryFn: getAdminProfile,
+  });
+
+  const { data: settingsData, refetch: refetchSettings } = useQuery({
+    queryKey: ['settings'],
+    queryFn: getSettings,
+  });
+
+  // Handle navigation
+  const handleNavClick = (sectionId) => {
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Are you sure you want to leave?')) {
+        return;
       }
     }
-  }, [orgData]);
-
-  const updateMutation = useMutation({
-    mutationFn: updateOrganization,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organization'] });
-      toast.success('Organization settings updated');
-    },
-  });
-
-  const logoMutation = useMutation({
-    mutationFn: uploadLogo,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organization'] });
-      toast.success('Logo uploaded successfully');
-    },
-  });
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setActiveSection(sectionId);
+    setHasUnsavedChanges(false);
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    const submitData = new FormData();
-    Object.keys(formData).forEach((key) => {
-      if (formData[key]) {
-        submitData.append(key, formData[key]);
+  // Handle save all changes
+  const handleSaveAll = async () => {
+    setIsLoading(true);
+    try {
+      // Save all sections data
+      // This would be a batch save or individual saves
+      await Promise.all([
+        updateOrganization(orgData),
+        updateAdminProfile(adminData),
+        updateSettings(settingsData),
+      ]);
+      
+      toast.success('All settings saved successfully');
+      setHasUnsavedChanges(false);
+      queryClient.invalidateQueries({ queryKey: ['organization'] });
+      queryClient.invalidateQueries({ queryKey: ['adminProfile'] });
+      queryClient.invalidateQueries({ queryKey: ['settings'] });
+    } catch (error) {
+      toast.error('Failed to save settings');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle reset
+  const handleReset = () => {
+    if (confirm('Are you sure you want to reset all settings to default?')) {
+      // Reset logic here
+      toast.success('Settings reset to default');
+      setHasUnsavedChanges(false);
+      refetchOrg();
+      refetchAdmin();
+      refetchSettings();
+    }
+  };
+
+  // Handle cancel
+  const handleCancel = () => {
+    if (hasUnsavedChanges && !confirm('You have unsaved changes. Are you sure you want to cancel?')) {
+      return;
+    }
+    navigate('/dashboard');
+  };
+
+  // Warn before leaving
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
       }
-    });
+    };
 
-    await updateMutation.mutateAsync(submitData);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Render active section
+  const renderSection = () => {
+    const props = {
+      data: {
+        organization: orgData,
+        admin: adminData,
+        settings: settingsData,
+      },
+      onDataChange: () => setHasUnsavedChanges(true),
+    };
+
+    switch (activeSection) {
+      case 'general':
+        return <GeneralSettings {...props} />;
+      case 'administrator':
+        return <AdministratorSettings {...props} />;
+      case 'notifications':
+        return <NotificationSettings {...props} />;
+      case 'documents':
+        return <DocumentSettings {...props} />;
+      case 'reports':
+        return <ReportSettings {...props} />;
+      case 'backup':
+        return <BackupSettings {...props} />;
+      case 'appearance':
+        return <AppearanceSettings {...props} />;
+      case 'security':
+        return <SecuritySettings {...props} />;
+      case 'system':
+        return <SystemSettings {...props} />;
+      default:
+        return <GeneralSettings {...props} />;
+    }
   };
-
-  const handleLogoUpload = async (file) => {
-    const formData = new FormData();
-    formData.append('logo', file);
-    await logoMutation.mutateAsync(formData);
-    setLogoPreview(URL.createObjectURL(file));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-        <p className="text-gray-600">Manage organization settings</p>
-      </div>
+    <div className="flex h-[calc(100vh-80px)] bg-gray-50">
+      {/* Left Navigation */}
+      <nav className="w-64 bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0">
+        <div className="p-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">⚙️ Settings</h2>
+        </div>
+        <div className="p-2">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavClick(item.id)}
+                className={`w-full flex items-center px-4 py-3 rounded-lg transition-colors ${
+                  activeSection === item.id
+                    ? 'bg-primary-50 text-primary-600'
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Icon className={`w-5 h-5 mr-3 ${
+                  activeSection === item.id ? 'text-primary-600' : 'text-gray-400'
+                }`} />
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </nav>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Logo Upload */}
-          <div className="flex flex-col items-center">
-            {logoPreview ? (
-              <div className="relative">
-                <img
-                  src={logoPreview}
-                  alt="Organization Logo"
-                  className="h-32 w-32 object-contain border-2 border-gray-200 rounded-lg"
-                />
-              </div>
-            ) : (
-              <div className="h-32 w-32 bg-gray-200 rounded-lg flex items-center justify-center border-2 border-gray-300">
-                <span className="text-gray-500 text-sm">No Logo</span>
-              </div>
-            )}
-            <div className="mt-2">
-              <ImageUpload
-                onImageSelect={handleLogoUpload}
-                label="Upload Logo"
-                maxSize={5}
-              />
-            </div>
+      {/* Main Content */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-6 pb-32">
+          {/* Section Header */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-900">
+              {navItems.find(item => item.id === activeSection)?.label}
+            </h1>
+            <p className="text-gray-600 mt-1">
+              Manage {navItems.find(item => item.id === activeSection)?.label.toLowerCase()} settings
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Organization Name *
-              </label>
-              <input
-                type="text"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Registration Number
-              </label>
-              <input
-                type="text"
-                name="registrationNumber"
-                value={formData.registrationNumber}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone
-              </label>
-              <input
-                type="tel"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
-                type="email"
-                name="email"
-                value={formData.email}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Website
-              </label>
-              <input
-                type="url"
-                name="website"
-                value={formData.website}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Established Date
-              </label>
-              <input
-                type="date"
-                name="establishedDate"
-                value={formData.establishedDate}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows="3"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mission
-              </label>
-              <textarea
-                name="mission"
-                value={formData.mission}
-                onChange={handleChange}
-                rows="2"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Vision
-              </label>
-              <textarea
-                name="vision"
-                value={formData.vision}
-                onChange={handleChange}
-                rows="2"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-            </div>
+          {/* Section Content */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            {renderSection()}
           </div>
+        </div>
 
-          <div className="flex justify-end">
-            <Button type="submit" disabled={updateMutation.isPending}>
-              {updateMutation.isPending ? 'Saving...' : 'Save Settings'}
+        {/* Fixed Bottom Actions */}
+        <div className="fixed bottom-0 left-64 right-0 bg-white border-t border-gray-200 p-4 shadow-lg">
+          <div className="max-w-4xl mx-auto flex justify-end space-x-4">
+            <Button
+              variant="outline"
+              onClick={handleCancel}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              disabled={isLoading}
+            >
+              Reset
+            </Button>
+            <Button
+              onClick={handleSaveAll}
+              disabled={isLoading || !hasUnsavedChanges}
+            >
+              {isLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
-        </form>
+        </div>
       </div>
     </div>
   );

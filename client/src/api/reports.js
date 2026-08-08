@@ -17,6 +17,22 @@ export const generateFamilyReport = async (params = {}) => {
   return data;
 };
 
+export const generateAllFamiliesReport = async (params = {}) => {
+  const { data } = await axios.get('/reports/all-families', { 
+    params, 
+    responseType: 'blob' 
+  });
+  return data;
+};
+
+export const generateMemberReport = async (params = {}) => {
+  const { data } = await axios.get('/reports/members', { 
+    params, 
+    responseType: 'blob' 
+  });
+  return data;
+};
+
 export const generateGenerationReport = async (params = {}) => {
   const { data } = await axios.get('/reports/generation', { 
     params, 
